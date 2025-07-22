@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Site com Grid Modular</title>
+    <!-- Preload de todos os ícones PNG usados no site -->
+    <link rel="preload" as="image" href="assets/msos/AddIcon.png">
+    <link rel="preload" as="image" href="assets/msos/ClipboardIcon.png">
+    <link rel="preload" as="image" href="assets/msos/SearchIcon.png">
+    <link rel="preload" as="image" href="assets/msos/NoteIcon.png">
+    <link rel="preload" as="image" href="assets/msos/ShortcutIcon.png">
+    <link rel="preload" as="image" href="assets/msos/ClipboardItemIcon.png">
+    <link rel="preload" as="image" href="assets/msos/BoldIcon.png">
+    <link rel="preload" as="image" href="assets/msos/UnderlineIcon.png">
+    <link rel="preload" as="image" href="assets/msos/StrikethroughIcon.png">
+    <link rel="preload" as="image" href="assets/msos/JustifyLeftIcon.png">
+    <link rel="preload" as="image" href="assets/msos/JustifyCenterIcon.png">
+    <link rel="preload" as="image" href="assets/msos/JustifyRightIcon.png">
+    <link rel="preload" as="image" href="assets/msos/UnorderedListIcon.png">
+    <link rel="preload" as="image" href="assets/msos/CheckboxIcon.png">
+    <link rel="preload" as="image" href="assets/msos/CloseIcon.png">
+    <link rel="preload" as="image" href="assets/msos/MinimizeIcon.png">
+    <link rel="preload" as="image" href="assets/msos/MaximizeIcon.png">
+    <link rel="preload" as="image" href="assets/msos/EnterFullscreenIcon.png">
+    <link rel="preload" as="image" href="assets/msos/DrawerIcon.png">
+    <link rel="preload" as="image" href="assets/msos/ImagePlaceholderIcon.png">
+    <style>
+        /* Impede seleção e interação com PNGs */
+        img {
+            user-select: none !important;
+            pointer-events: none !important;
+            -webkit-user-select: none !important;
+        }
+        /* Animação para reaparecimento do clipboard button */
+        #clipboard-btn-modular {
+            transition: opacity 0.3s;
+        }
+        /* Animação para área do clipboard */
+        #clipboard-interface {
+            opacity: 0;
+            transform: translateY(-40px);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        #clipboard-interface.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        #clipboard-interface.hide {
+            opacity: 0;
+            transform: translateY(-40px);
+        }
+        /* ...linhas guias removidas... */
+        body {
+            min-height: 100vh;
+            margin: 0;
+            background-color: #181818;
+            /* Grid base */
+            background-image:
+                linear-gradient(to right, #222222 1px, transparent 1px),
+                linear-gradient(to bottom, #222222 1px, transparent 1px);
+            background-size:
+                10px 10px,
+                10px 10px;
+            background-position:
+                0 0,
+                0 0;
+            color: #f0f0f0;
+        }
+        .container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+        #dropdown {
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        #dropdown.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .modular-btn {
+            border-radius: 10px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+            background: #23272b;
+            color: #f0f0f0;
+            border: none;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10;
+            transition: background 0.2s;
+        }
+        .modular-btn:hover {
+            background: #2c3136;
+        }
+    </style>
+</head>
+<body>
+    <div class="container" oncontextmenu="return false;">
+        <button id="modular-btn" class="modular-btn" style="position:absolute;left:30px;top:30px;width:40px;height:40px;">
+            <img src="assets/msos/AddIcon.png" alt="Adicionar" width="24" height="24" draggable="false">
+        </button>
+        <button id="clipboard-btn-modular" class="modular-btn" title="Clipboard" style="position:absolute;left:1210px;top:30px;width:40px;height:40px;">
+            <img src="assets/msos/ClipboardIcon.png" alt="Clipboard" width="24" height="24" draggable="false">
+        </button>
+        <button id="search-btn-modular" class="modular-btn" title="Pesquisa" style="position:absolute;left:420px;top:30px;width:40px;height:40px;">
+            <img src="assets/msos/SearchIcon.png" alt="Pesquisa" width="24" height="24" draggable="false">
+        </button>
+        <div id="dropdown" style="position:absolute;left:30px;top:80px;display:none;flex-direction:column;gap:10px;z-index:11;"></div>
+    </div>
+    <script>
+        // Ícones principais já estão no HTML para carregamento instantâneo
+        // ...
+        // Debug grid (comentado)
+        // const script = document.createElement('script');
+        // script.src = 'debugGrid.js';
+        // document.body.appendChild(script);
+
+        class ModularUI {
+            constructor() {
+                this.modularBtn = document.getElementById('modular-btn');
+                this.dropdown = document.getElementById('dropdown');
+                this.notesModule = null;
+                this.dropdownButtons = [
+                    {
+                        label: 'note',
+                        icon: 'assets/msos/NoteIcon.png',
+                        onClick: () => {
+                            if (!this.notesModule) {
+                                import('./ModularNotes.js').then(mod => {
+                                    this.notesModule = new mod.default('.container');
+                                    this.notesModule.createNote();
+                                });
+                            } else {
+                                this.notesModule.createNote();
+                            }
+                        }
+                    },
+                    {
+                        label: 'shortcut',
+                        icon: 'assets/msos/ShortcutIcon.png',
+                        onClick: () => {
+                            const container = document.querySelector('.container');
+                            const exists = Array.from(container.querySelectorAll('button.modular-btn')).some(btn => {
+                                return btn.style.left === '80px' && btn.style.top === '130px';
+                            });
+                            if (!exists) {
+                                import('./ModularShortcut.js').then(mod => {
+                                    new mod.default('.container');
+                                });
+                            }
+                        }
+                    }
+                ];
+                this.dropdownVisible = false;
+            this.clipboardBtn = document.getElementById('clipboard-btn-modular');
+            this.clipboardInterface = null;
+            this.clipboardItemTexts = Array(9).fill(null);
+            this.clipboardBtnTimer = null;
+                this.searchBtn = document.getElementById('search-btn-modular');
+                this.searchBar = null;
+                this.searchBarTimer = null;
+                this.initEvents();
+            }
+
+            initEvents() {
+                this.modularBtn.addEventListener('click', () => this.toggleDropdown());
+            this.clipboardBtn.addEventListener('click', () => this.showClipboard());
+            // Área sensível para reaparecer clipboard
+            this.clipboardBtnArea = document.createElement('div');
+            this.clipboardBtnArea.style.position = 'absolute';
+            this.clipboardBtnArea.style.left = '1210px';
+            this.clipboardBtnArea.style.top = '30px';
+            this.clipboardBtnArea.style.width = '40px';
+            this.clipboardBtnArea.style.height = '40px';
+            this.clipboardBtnArea.style.zIndex = '9';
+            this.clipboardBtnArea.style.background = 'transparent';
+            this.clipboardBtnArea.style.pointerEvents = 'auto';
+            this.clipboardBtnArea.style.display = 'none';
+            document.querySelector('.container').appendChild(this.clipboardBtnArea);
+            this.clipboardBtnArea.addEventListener('mouseenter', () => {
+                if (this.clipboardBtn.style.display === 'none') {
+                    this.clipboardBtn.style.display = '';
+                    this.clipboardBtn.style.opacity = '1';
+                    this.clipboardBtnArea.style.display = 'none';
+                    if (this.clipboardBtnTimer) clearTimeout(this.clipboardBtnTimer);
+                    this.clipboardBtnTimer = setTimeout(() => {
+                        this.clipboardBtn.style.opacity = '0';
+                        setTimeout(() => {
+                            this.clipboardBtn.style.display = 'none';
+                            this.clipboardBtnArea.style.display = '';
+                        }, 300);
+                    }, 20000);
+                }
+            });
+                this.searchBtn.addEventListener('click', () => this.toggleSearchBar());
+                // Segurar para esconder o botão de pesquisa
+                let searchHoldTimer = null;
+                this.searchBtn.addEventListener('mousedown', (e) => {
+                    searchHoldTimer = setTimeout(() => {
+                        this.searchBtn.style.opacity = '0';
+                        setTimeout(() => {
+                            this.searchBtn.style.display = 'none';
+                        }, 300);
+                    }, 1000); // 1 segundo
+                });
+                this.searchBtn.addEventListener('mouseup', (e) => {
+                    if (searchHoldTimer) {
+                        clearTimeout(searchHoldTimer);
+                        searchHoldTimer = null;
+                    }
+                });
+                this.searchBtn.addEventListener('mouseleave', (e) => {
+                    if (searchHoldTimer) {
+                        clearTimeout(searchHoldTimer);
+                        searchHoldTimer = null;
+                    }
+                });
+            window.addEventListener('DOMContentLoaded', () => {
+                this.createSearchBar();
+                if(this.searchBar) this.searchBar.focus();
+                // Sincroniza desaparecimento do clipboardBtn
+                if (this.clipboardBtn) {
+                    setTimeout(() => {
+                        this.clipboardBtn.style.opacity = '0';
+                        setTimeout(() => {
+                            this.clipboardBtn.style.display = 'none';
+                            this.clipboardBtnArea.style.display = '';
+                        }, 300);
+                    }, 15000);
+                }
+            });
+            }
+
+            toggleDropdown() {
+                this.dropdownVisible = !this.dropdownVisible;
+                if(this.dropdownVisible){
+                    this.renderDropdown();
+                    this.dropdown.style.display = 'flex';
+                    setTimeout(() => this.dropdown.classList.add('show'), 10);
+                }else{
+                    this.dropdown.classList.remove('show');
+                    setTimeout(() => this.dropdown.style.display = 'none', 300);
+                }
+            }
+
+            renderDropdown() {
+                this.dropdown.innerHTML = '';
+                this.dropdownButtons.forEach((btnData, idx) => {
+                    const btn = document.createElement('button');
+                    btn.className = 'modular-btn';
+                    btn.style.width = '40px';
+                    btn.style.height = '40px';
+                    btn.onclick = btnData.onClick;
+                    if(idx === 0) btn.style.marginTop = '0';
+                    // Cria o ícone PNG via createElement
+                    const img = document.createElement('img');
+                    img.src = btnData.icon;
+                    img.alt = btnData.label;
+                    img.width = 24;
+                    img.height = 24;
+                    img.setAttribute('draggable', 'false');
+                    btn.appendChild(img);
+                    this.dropdown.appendChild(btn);
+                });
+            }
+
+            showClipboard() {
+                this.clipboardBtn.style.opacity = '0';
+                setTimeout(() => {
+                    this.clipboardBtn.style.display = 'none';
+                    this.clipboardBtnArea.style.display = '';
+                }, 300);
+                if(this.clipboardInterface) return;
+                this.clipboardInterface = document.createElement('div');
+                this.clipboardInterface.id = 'clipboard-interface';
+                this.clipboardInterface.classList.add('hide');
+                this.clipboardInterface.style.position = 'absolute';
+                this.clipboardInterface.style.left = '1110px';
+                this.clipboardInterface.style.top = '30px';
+                this.clipboardInterface.style.width = '140px';
+                this.clipboardInterface.style.height = '140px';
+                this.clipboardInterface.style.background = 'transparent';
+                this.clipboardInterface.style.borderRadius = '12px';
+                this.clipboardInterface.style.zIndex = '11';
+                this.clipboardInterface.style.display = 'grid';
+                this.clipboardInterface.style.gridTemplateColumns = 'repeat(3, 40px)';
+                this.clipboardInterface.style.gridTemplateRows = 'repeat(3, 40px)';
+                this.clipboardInterface.style.gap = '10px';
+                this.clipboardInterface.style.alignItems = 'center';
+                this.clipboardInterface.style.justifyItems = 'center';
+                this.clipboardInterface.style.color = '#f0f0f0';
+                this.clipboardInterface.innerHTML = '';
+                const clipboardIconPath = 'assets/msos/ClipboardItemIcon.png';
+                let rowsToShow = 1;
+                if(this.clipboardItemTexts.slice(0,3).every(t => t)) rowsToShow = 2;
+                if(this.clipboardItemTexts.slice(0,6).every(t => t)) rowsToShow = 3;
+                for(let i=0;i<rowsToShow*3;i++){
+                    const btn = document.createElement('button');
+                    btn.className = 'modular-btn';
+                    btn.id = `clipboard-item-${i+1}`;
+                    btn.style.width = '40px';
+                    btn.style.height = '40px';
+                    btn.style.margin = '0';
+                    btn.style.padding = '0';
+                    if(this.clipboardItemTexts[i]){
+                        const span = document.createElement('span');
+                        span.style.fontSize = '1.5rem';
+                        span.style.fontFamily = 'monospace';
+                        span.style.color = '#f0f0f0';
+                        span.style.display = 'flex';
+                        span.style.alignItems = 'center';
+                        span.style.justifyContent = 'center';
+                        span.style.width = '100%';
+                        span.style.height = '100%';
+                        span.textContent = this.clipboardItemTexts[i][0];
+                        btn.appendChild(span);
+                    }else{
+                        // Cria o ícone PNG via createElement
+                        const img = document.createElement('img');
+                        img.src = clipboardIconPath;
+                        img.alt = 'Clipboard';
+                        img.width = 24;
+                        img.height = 24;
+                        img.setAttribute('draggable', 'false');
+                        btn.appendChild(img);
+                    }
+                    let pressTimer = null;
+                    btn.addEventListener('mousedown', (e) => {
+                        e.stopPropagation();
+                        if(this.clipboardItemTexts[i] && !btn.disabled){
+                            pressTimer = setTimeout(() => {
+                                this.clipboardItemTexts[i] = null;
+                                btn.disabled = true;
+                                btn.style.opacity = '0.5';
+                                setTimeout(() => {
+                                    btn.disabled = false;
+                                    btn.style.opacity = '';
+                                    this.clipboardInterface.remove();
+                                    this.clipboardInterface = null;
+                                    this.clipboardBtn.style.display = '';
+                                    this.clipboardBtn.click();
+                                }, 500);
+                            }, 500);
+                        }
+                    });
+                    btn.addEventListener('mouseup', (e) => {
+                        e.stopPropagation();
+                        if(pressTimer){
+                            clearTimeout(pressTimer);
+                            pressTimer = null;
+                            if(this.clipboardItemTexts[i]){
+                                navigator.clipboard.writeText(this.clipboardItemTexts[i]);
+                            }
+                        }else if(!this.clipboardItemTexts[i]){
+                            const text = prompt('Digite o texto para este item do clipboard:');
+                            if(text && text.trim()){
+                                this.clipboardItemTexts[i] = text.trim();
+                            }else{
+                                this.clipboardItemTexts[i] = null;
+                            }
+                            this.clipboardInterface.remove();
+                            this.clipboardInterface = null;
+                            this.clipboardBtn.style.display = '';
+                            this.clipboardBtn.click();
+                        }
+                    });
+                    btn.addEventListener('mouseleave', () => {
+                        if(pressTimer){
+                            clearTimeout(pressTimer);
+                            pressTimer = null;
+                        }
+                    });
+                    this.clipboardInterface.appendChild(btn);
+                }
+                document.querySelector('.container').appendChild(this.clipboardInterface);
+                setTimeout(() => {
+                    this.clipboardInterface.classList.remove('hide');
+                    this.clipboardInterface.classList.add('show');
+                }, 10);
+                setTimeout(() => {
+                    document.addEventListener('mousedown', (e) => this.closeClipboardArea(e));
+                }, 0);
+            }
+
+            closeClipboardArea(e) {
+                if(!this.clipboardInterface) return;
+                if(!this.clipboardInterface.contains(e.target)){
+                    this.clipboardInterface.classList.remove('show');
+                    this.clipboardInterface.classList.add('hide');
+                    setTimeout(() => {
+                        this.clipboardInterface.remove();
+                        this.clipboardInterface = null;
+                        this.clipboardBtn.style.display = '';
+                        setTimeout(() => {
+                            this.clipboardBtn.style.opacity = '1';
+                        }, 10);
+                    }, 300);
+                    document.removeEventListener('mousedown', (ev) => this.closeClipboardArea(ev));
+                }
+            }
+
+            createSearchBar() {
+                if(this.searchBar) return;
+                this.searchBar = document.createElement('input');
+                this.searchBar.type = 'text';
+                this.searchBar.placeholder = 'Pesquisar...';
+                this.searchBar.id = 'search-bar-modular';
+                this.searchBar.style.position = 'absolute';
+                this.searchBar.style.left = '470px';
+                this.searchBar.style.top = '30px';
+                this.searchBar.style.width = '10px';
+                this.searchBar.style.height = '40px';
+                this.searchBar.style.maxWidth = '380px';
+                this.searchBar.style.borderRadius = '12px';
+                this.searchBar.style.boxShadow = '0 4px 16px rgba(0,0,0,0.4)';
+                this.searchBar.style.background = '#23272b';
+                this.searchBar.style.color = '#f0f0f0';
+                this.searchBar.style.border = 'none';
+                this.searchBar.style.fontSize = '1rem';
+                this.searchBar.style.padding = '0 12px';
+                this.searchBar.style.boxSizing = 'border-box';
+                this.searchBar.style.zIndex = '10';
+                this.searchBar.style.outline = 'none';
+                this.searchBar.style.transition = 'width 0.4s cubic-bezier(.7,.2,.2,1)';
+                document.querySelector('.container').appendChild(this.searchBar);
+                // Força reflow para garantir animação
+                void this.searchBar.offsetWidth;
+                setTimeout(() => {
+                    this.searchBar.style.width = '380px';
+                }, 10);
+                this.searchBar.focus();
+                this.searchBar.addEventListener('keydown', (e) => {
+                    if(e.key === 'Enter') {
+                        const query = this.searchBar.value.trim();
+                        if(query) {
+                            window.open('https://www.google.com/search?q=' + encodeURIComponent(query), '_blank');
+                        }
+                    }
+                });
+            }
+
+            removeSearchBar() {
+                if(this.searchBar) {
+                    // Animação de fechamento: reduz largura antes de remover
+                    this.searchBar.style.width = '20px';
+                    setTimeout(() => {
+                        if(this.searchBar) {
+                            this.searchBar.remove();
+                            this.searchBar = null;
+                        }
+                    }, 400); // tempo igual ao da transição
+                }
+            }
+
+            toggleSearchBar() {
+                if(this.searchBar) {
+                    this.removeSearchBar();
+                    return;
+                }
+                if(this.searchBarTimer) {
+                    clearTimeout(this.searchBarTimer);
+                    this.searchBarTimer = null;
+                }
+                this.createSearchBar();
+            }
+        }
+
+        // Inicializa a interface modular
+        new ModularUI();
+    </script>
+</body>
+</html>
